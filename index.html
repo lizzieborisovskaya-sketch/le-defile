@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Le Défilé Runway</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap">
+<style>
+/* Layout: one full-screen walkable scene of the Cour du Cheval Blanc built from our photographs; quiet masthead top-left, one control dock at the bottom. Single dusk look by choice. */
+:root {
+  --ink: #141210;
+  --cream: #F2EEE6;
+  --cream-dim: rgba(242, 238, 230, 0.82);
+  --runway-red: #A8111D;
+  --glass: rgba(20, 18, 16, 0.5);
+  --line: rgba(242, 238, 230, 0.5);
+  --display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --body: Jost, Futura, 'Century Gothic', 'Helvetica Neue', sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--cream); font-family: var(--body); overflow: hidden; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#scene:active { cursor: grabbing; }
+.shade { position: fixed; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(20,18,16,0.5) 0%, rgba(20,18,16,0) 22%, rgba(20,18,16,0) 62%, rgba(20,18,16,0.66) 100%); }
+
+.ui {
+  position: fixed; inset: 0; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.brand { display: flex; flex-direction: column; gap: 6px; max-width: 34rem; }
+.eyebrow { margin: 0; font-size: 0.72rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--cream-dim); }
+h1 { margin: 0; font-family: var(--display); font-weight: 300; font-size: clamp(2.4rem, 7vw, 4.2rem); line-height: 0.9; }
+.tag { margin: 0; font-family: var(--display); font-style: italic; font-weight: 300; font-size: clamp(1.05rem, 2.4vw, 1.45rem); }
+
+.bottom { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.hint { margin: 0; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--cream-dim); text-align: center; min-height: 1.2em; }
+.controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; pointer-events: auto; }
+button {
+  font-family: var(--body); font-size: 0.74rem; letter-spacing: 0.2em; text-transform: uppercase;
+  min-height: 46px; padding: 0 18px; border-radius: 0; cursor: pointer;
+  border: 1px solid var(--cream); background: var(--glass); color: var(--cream);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+button.primary { background: var(--cream); color: var(--ink); }
+.toggle[aria-pressed="true"] { background: var(--runway-red); border-color: var(--runway-red); color: var(--cream); }
+button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
+.moves { display: flex; gap: 10px; pointer-events: auto; }
+.moves button { width: 58px; min-height: 58px; padding: 0; display: grid; place-items: center; touch-action: none; }
+.moves svg { width: 22px; height: 22px; }
+.foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.note { margin: 0; font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cream-dim); }
+.loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--ink); font-family: var(--display); font-style: italic; font-size: 1.4rem; transition: opacity 0.8s ease; pointer-events: none; }
+.fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-family: var(--display); font-size: 1.3rem; background: var(--ink); }
+@media (max-width: 560px) {
+  button { font-size: 0.64rem; padding: 0 12px; letter-spacing: 0.14em; }
+  .foot { justify-content: center; text-align: center; }
+}
+</style>
+
+<canvas id="scene" aria-label="Walkable 3D concept of a fashion runway in the Cour du Cheval Blanc, Château de Fontainebleau, built from photographs"></canvas>
+<div class="shade" aria-hidden="true"></div>
+
+<div class="ui">
+  <header class="brand">
+    <p class="eyebrow">Château de Fontainebleau · Cour du Cheval Blanc</p>
+    <h1>Le Défilé</h1>
+    <p class="tag">Walk the runway before your guests do.</p>
+  </header>
+
+  <div class="bottom">
+    <div class="moves" id="moves" hidden>
+      <button id="back" type="button" aria-label="Walk backward"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 4v16M5 13l7 7 7-7"/></svg></button>
+      <button id="fwd" type="button" aria-label="Walk forward"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg></button>
+    </div>
+    <p class="hint" id="hint">Drag to look around.</p>
+    <div class="controls">
+      <button class="primary" id="tour" type="button">Walk the runway</button>
+      <button type="button" class="toggle" id="explore" aria-pressed="false">Explore freely</button>
+      <button type="button" class="toggle" id="today" aria-pressed="false">Show today</button>
+    </div>
+    <div class="foot">
+      <p class="note">Concept visualisation · façades and ground from photographs by Group G34 · models AI-generated</p>
+      <p class="note">Section E2 · Group G34</p>
+    </div>
+  </div>
+</div>
+<div class="loading" id="loading">Setting the courtyard…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function fail(msg) { var d = document.createElement('div'); d.className = 'fallback'; d.textContent = msg; document.body.appendChild(d); $('loading').style.opacity = 0; }
+  if (!window.THREE) { fail('The 3D courtyard could not load. Check your connection and reload the page.'); return; }
+
+  var canvas = $('scene'), renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); }
+  catch (e) { fail('This browser cannot show 3D graphics. Try a recent Chrome, Safari or Firefox.'); return; }
+  var small = Math.min(window.innerWidth, window.innerHeight) < 600;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 2 : 1.5));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(60, 1, 0.25, 1500);
+  camera.rotation.order = 'YXZ';
+
+  var manager = new THREE.LoadingManager();
+  manager.onLoad = function () { $('loading').style.opacity = 0; };
+  manager.onError = function () { $('loading').style.opacity = 0; };
+  var loader = new THREE.TextureLoader(manager);
+  var aniso = renderer.capabilities.getMaxAnisotropy();
+  function tex(src, rx, ry, mirror) {
+    var t = loader.load(src);
+    t.encoding = THREE.sRGBEncoding; t.anisotropy = aniso;
+    if (rx) { t.wrapS = t.wrapT = mirror ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping; t.repeat.set(rx, ry); }
+    return t;
+  }
+  function alpha(src) { var t = loader.load(src); t.anisotropy = aniso; return t; }
+
+  /* ---------- sky from our panorama ---------- */
+  var sky = loader.load('img/sky.jpg');
+  sky.encoding = THREE.sRGBEncoding;
+  sky.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = sky;
+
+  /* ---------- light: low golden sun behind the entrance, to the right ---------- */
+  scene.add(new THREE.HemisphereLight('#cdd6e4', '#7d6648', 0.52));
+  var sun = new THREE.DirectionalLight('#ffc98f', 0.95);
+  var sunTh = 2.75, sunEl = 0.16;
+  sun.target.position.set(0, 0, -55);
+  sun.position.set(Math.sin(sunTh) * 260, Math.tan(sunEl) * 260, -55 - Math.cos(sunTh) * 260);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(small ? 2048 : 4096, small ? 2048 : 4096);
+  var sc = sun.shadow.camera; sc.left = -62; sc.right = 62; sc.top = 34; sc.bottom = -34; sc.near = 20; sc.far = 600; sc.updateProjectionMatrix();
+  sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+  scene.add(sun, sun.target);
+
+  /* ---------- ground: cobbles, gravel borders, lawns ---------- */
+  function flat(w, d, mat, x, y, z) {
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m;
+  }
+  flat(130, 180, new THREE.MeshBasicMaterial({ map: tex('img/cobbles.jpg', 130 / 2.0, 180 / 2.4, true), color: '#ece4d8', toneMapped: false }), 0, 0, -50);
+  var gravel = new THREE.MeshBasicMaterial({ color: '#a0664a', toneMapped: false });
+  var lawnMat = new THREE.MeshBasicMaterial({ map: tex('img/lawn.jpg', 37 / 6, 108 / 6, true), color: '#e2ead0', toneMapped: false });
+  [-1, 1].forEach(function (s) {
+    flat(38.4, 109.4, gravel, s * 25.6, 0.03, -60);
+    flat(37, 108, lawnMat, s * 25.6, 0.06, -60);
+  });
+  var shadowCatch = flat(130, 180, new THREE.ShadowMaterial({ opacity: 0.5 }), 0, 0.09, -50);
+  shadowCatch.receiveShadow = true;
+
+  /* ---------- façades, cut from our photographs ---------- */
+  function facade(name, w, h, x, z, rotY) {
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+      map: tex('img/' + name + '.jpg'), alphaMap: alpha('img/' + name + '-a.jpg'), transparent: true, alphaTest: 0.35, toneMapped: false
+    }));
+    m.position.set(x, h / 2 - 0.25, z); m.rotation.y = rotY; scene.add(m);
+  }
+  facade('facade-back', 112, 112 * 462 / 1620, 0, -128, 0);
+  facade('facade-left', 144, 144 * 680 / 3580, -47, -56, Math.PI / 2);
+  facade('facade-right', 144, 144 * 700 / 3530, 47, -56, -Math.PI / 2);
+
+  // entrance railing behind the viewer
+  (function () {
+    var n = Math.floor(94 / 0.16), bars = new THREE.InstancedMesh(new THREE.BoxGeometry(0.03, 2.6, 0.03), new THREE.MeshLambertMaterial({ color: '#1d1c1a' }), n);
+    var tips = new THREE.InstancedMesh(new THREE.ConeGeometry(0.035, 0.14, 6), new THREE.MeshLambertMaterial({ color: '#c9a24a' }), n);
+    var m = new THREE.Matrix4();
+    for (var i = 0; i < n; i++) { var x = -47 + i * 0.16; m.makeTranslation(x, 1.3, 17); bars.setMatrixAt(i, m); m.makeTranslation(x, 2.67, 17); tips.setMatrixAt(i, m); }
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(94, 0.06, 0.06), new THREE.MeshLambertMaterial({ color: '#1d1c1a' }));
+    rail.position.set(0, 2.3, 17);
+    scene.add(bars, tips, rail);
+  })();
+
+  /* ---------- orange trees in Versailles planters, and clipped yews ---------- */
+  var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), v3 = new THREE.Vector3();
+  function instanced(geo, mat, list, shadow) {
+    var im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach(function (t, i) { m4.compose(v3.set(t[0], t[1], t[2]), q.set(0, 0, 0, 1), t[3] ? v3.clone().set(t[3], t[4], t[5]) : one); im.setMatrixAt(i, m4); });
+    if (shadow !== false) { im.castShadow = true; im.receiveShadow = true; }
+    scene.add(im); return im;
+  }
+  var planters = [];
+  [-1, 1].forEach(function (s) { for (var z = -3; z > -116; z -= 9) planters.push([s * 6.4, z]); });
+  var boxes = [], posts = [], balls = [], trunks = [], crowns = [];
+  planters.forEach(function (p) {
+    var x = p[0], z = p[1];
+    boxes.push([x, 0.55, z]);
+    [[-0.52, -0.52], [0.52, -0.52], [-0.52, 0.52], [0.52, 0.52]].forEach(function (o) { posts.push([x + o[0], 0.6, z + o[1]]); balls.push([x + o[0], 1.27, z + o[1]]); });
+    trunks.push([x, 1.6, z]);
+    crowns.push([x, 2.55, z, 1, 0.92, 1]);
+  });
+  instanced(new THREE.BoxGeometry(1.0, 0.95, 1.0), new THREE.MeshLambertMaterial({ color: '#efe9de' }), boxes);
+  instanced(new THREE.BoxGeometry(0.12, 1.08, 0.12), new THREE.MeshLambertMaterial({ color: '#ece6dc' }), posts);
+  instanced(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshLambertMaterial({ color: '#ece6dc' }), balls);
+  instanced(new THREE.CylinderGeometry(0.05, 0.065, 1.2, 8), new THREE.MeshLambertMaterial({ color: '#5a4a3a' }), trunks);
+  var crownGeo = new THREE.IcosahedronGeometry(0.85, 3);
+  (function () { var pa = crownGeo.attributes.position; for (var i = 0; i < pa.count; i++) { v3.fromBufferAttribute(pa, i); v3.multiplyScalar(1 + (Math.sin(v3.x * 9) * Math.cos(v3.y * 11) * Math.sin(v3.z * 7)) * 0.06); pa.setXYZ(i, v3.x, v3.y, v3.z); } crownGeo.computeVertexNormals(); })();
+  instanced(crownGeo, new THREE.MeshLambertMaterial({ map: tex('img/foliage.jpg', 2, 1), color: '#dfe0bf' }), crowns);
+  var yews = [];
+  [-1, 1].forEach(function (s) {
+    for (var z = -10; z > -115; z -= 21) yews.push([s * 8.6, 1.3, z]);
+    [[7.8, -6.8], [7.8, -113.2], [43.4, -6.8], [43.4, -113.2]].forEach(function (c) { yews.push([s * c[0], 1.3, c[1]]); });
+  });
+  instanced(new THREE.ConeGeometry(0.72, 2.6, 18), new THREE.MeshLambertMaterial({ map: tex('img/foliage.jpg', 2, 2), color: '#4a5e3a' }), yews);
+
+  /* ---------- the show set: runway, cube seating, models ---------- */
+  var set = new THREE.Group(); scene.add(set);
+  var RH = 0.42, RW = 3.0, Z0 = 0, Z1 = -110;
+  var runway = new THREE.Mesh(new THREE.BoxGeometry(RW, RH, Z0 - Z1), new THREE.MeshPhongMaterial({ color: '#e9dcc6', shininess: 80, specular: '#3a3630' }));
+  runway.position.set(0, RH / 2, (Z0 + Z1) / 2); runway.castShadow = true; runway.receiveShadow = true; set.add(runway);
+
+  var cubes = [], c = 0.42;
+  [-1, 1].forEach(function (s) { [0.7, 1.35, 2.0].forEach(function (off) { for (var z = -1; z > -108; z -= 0.56) cubes.push([s * (RW / 2 + off + c / 2), c / 2, z]); }); });
+  var cubeMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(c, c, c), new THREE.MeshLambertMaterial({ color: '#e4d5bb' }), cubes.length);
+  cubes.forEach(function (t, i) { m4.makeTranslation(t[0], t[1], t[2]); cubeMesh.setMatrixAt(i, m4); });
+  cubeMesh.castShadow = true; cubeMesh.receiveShadow = true; set.add(cubeMesh);
+
+  var cast = [
+    { src: 'img/model1.png', ar: 291 / 777, z: -12, dx: 0.3 },
+    { src: 'img/model2.png', ar: 267 / 801, z: -26, dx: -0.3 },
+    { src: 'img/model3.png', ar: 298 / 769, z: -41, dx: 0.25 },
+    { src: 'img/model1.png', ar: 291 / 777, z: -58, dx: -0.25, flip: true },
+    { src: 'img/model2.png', ar: 267 / 801, z: -77, dx: 0.2, flip: true },
+    { src: 'img/model3.png', ar: 298 / 769, z: -95, dx: -0.2, flip: true }
+  ];
+  var models = cast.map(function (k) {
+    var t = loader.load(k.src); t.encoding = THREE.sRGBEncoding;
+    if (k.flip) { t.wrapS = THREE.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1; }
+    var H = 1.78, geo = new THREE.PlaneGeometry(H * k.ar, H); geo.translate(0, H / 2, 0);
+    var m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.4, color: '#f7e6d2', side: THREE.DoubleSide, toneMapped: false }));
+    m.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: t, alphaTest: 0.4 });
+    m.position.set(k.dx, RH, k.z); m.castShadow = true; set.add(m);
+    return m;
+  });
+
+  /* ---------- moving around ---------- */
+  var pos = new THREE.Vector3(-1.85, 1.65, 10), yaw = 0, pitch = -0.02, look = { yaw: 0, pitch: 0 };
+  var mode = 'idle', tourT = 0;
+  var AISLE = -(RW / 2 + 0.35);
+  var tour = [
+    { t: 0, p: [AISLE, 1.65, 10], yaw: 0, pitch: -0.02 },
+    { t: 4, p: [AISLE, 1.65, 2], yaw: 0.12, pitch: -0.04 },
+    { t: 40, p: [AISLE, 1.65, -104], yaw: 0.05, pitch: 0.0 },
+    { t: 46, p: [-0.6, 2.07, -112], yaw: 0.0, pitch: 0.2 }
+  ];
+  function ease(x) { return x * x * (3 - 2 * x); }
+  function sampleTour(t) {
+    for (var i = 0; i < tour.length - 1; i++) {
+      var a = tour[i], b = tour[i + 1];
+      if (t <= b.t) {
+        var k = (t - a.t) / (b.t - a.t), e = i === 1 ? k : ease(k);
+        pos.set(a.p[0] + (b.p[0] - a.p[0]) * e, a.p[1] + (b.p[1] - a.p[1]) * e, a.p[2] + (b.p[2] - a.p[2]) * e);
+        yaw = a.yaw + (b.yaw - a.yaw) * ease(k); pitch = a.pitch + (b.pitch - a.pitch) * ease(k);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  var tourBtn = $('tour'), exploreBtn = $('explore'), todayBtn = $('today'), hint = $('hint'), moves = $('moves');
+  function setMode(m) {
+    mode = m;
+    exploreBtn.setAttribute('aria-pressed', m === 'free' ? 'true' : 'false');
+    moves.hidden = m !== 'free';
+    tourBtn.textContent = m === 'tour' ? 'Pause' : (m === 'done' ? 'Walk again' : 'Walk the runway');
+    hint.textContent = m === 'free' ? 'Drag to look. Walk with the arrows, or W A S D on a keyboard.'
+      : m === 'tour' ? 'Walking the front row toward Napoleon’s staircase. Drag to look around.'
+      : m === 'paused' ? 'Paused. Drag to look around.'
+      : 'Drag to look around.';
+  }
+  tourBtn.addEventListener('click', function () {
+    if (mode === 'tour') { setMode('paused'); return; }
+    if (mode !== 'paused') { tourT = 0; look.yaw = 0; look.pitch = 0; }
+    setMode('tour');
+  });
+  exploreBtn.addEventListener('click', function () {
+    if (mode === 'free') { setMode('idle'); return; }
+    yaw += look.yaw; pitch += look.pitch; look.yaw = 0; look.pitch = 0;
+    setMode('free');
+  });
+  todayBtn.addEventListener('click', function () {
+    set.visible = !set.visible;
+    todayBtn.setAttribute('aria-pressed', set.visible ? 'false' : 'true');
+    todayBtn.textContent = set.visible ? 'Show today' : 'Show the runway';
+  });
+
+  // drag to look (adds to the walk's own heading while touring)
+  var dragging = false, lx = 0, ly = 0;
+  canvas.addEventListener('pointerdown', function (e) { dragging = true; lx = e.clientX; ly = e.clientY; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    var k = (camera.fov * Math.PI / 180) / canvas.clientHeight;
+    var dy = (e.clientX - lx) * k, dp = (e.clientY - ly) * k;
+    if (mode === 'tour') { look.yaw += dy; look.pitch = Math.max(-0.8, Math.min(0.8, look.pitch + dp)); }
+    else { yaw += dy; pitch = Math.max(-1.1, Math.min(1.1, pitch + dp)); }
+    lx = e.clientX; ly = e.clientY;
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) { canvas.addEventListener(ev, function () { dragging = false; }); });
+
+  var input = { f: 0 }, keys = {};
+  window.addEventListener('keydown', function (e) {
+    var k = e.key.toLowerCase();
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].indexOf(k) < 0) return;
+    if (mode !== 'free') { yaw += look.yaw; pitch += look.pitch; look.yaw = 0; look.pitch = 0; setMode('free'); }
+    keys[k] = true; e.preventDefault();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  function hold(btn, dir) {
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); input.f = dir; try { btn.setPointerCapture(e.pointerId); } catch (_) {} });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { btn.addEventListener(ev, function () { input.f = 0; }); });
+  }
+  hold($('fwd'), 1); hold($('back'), -1);
+
+  function resize() {
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.fov = w < h ? 72 : 58; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize); resize();
+
+  var clock = new THREE.Clock(), idleT = 0;
+  function frame() {
+    var dt = Math.min(clock.getDelta(), 0.05);
+    if (mode === 'tour') {
+      tourT += dt;
+      if (sampleTour(tourT)) { setMode('done'); }
+    } else if (mode === 'free') {
+      var f = input.f + ((keys.w || keys.arrowup) ? 1 : 0) - ((keys.s || keys.arrowdown) ? 1 : 0);
+      var st = ((keys.d || keys.arrowright) ? 1 : 0) - ((keys.a || keys.arrowleft) ? 1 : 0);
+      var sp = 4.2 * dt;
+      pos.x += (Math.sin(yaw) * f + Math.cos(yaw) * st) * sp;
+      pos.z += (-Math.cos(yaw) * f + Math.sin(yaw) * st) * sp;
+      pos.x = Math.max(-44, Math.min(44, pos.x)); pos.z = Math.max(-124, Math.min(15, pos.z));
+      var onRunway = set.visible && Math.abs(pos.x) < RW / 2 && pos.z < Z0 && pos.z > Z1;
+      pos.y += ((onRunway ? RH + 1.65 : 1.65) - pos.y) * Math.min(1, dt * 5);
+    } else if (mode === 'idle') {
+      idleT += dt; yaw = Math.sin(idleT / 4) * 0.18;
+    }
+    camera.position.copy(pos);
+    camera.rotation.set(pitch + (mode === 'tour' || mode === 'paused' || mode === 'done' ? look.pitch : 0), -(yaw + (mode === 'tour' || mode === 'paused' || mode === 'done' ? look.yaw : 0)), 0);
+    models.forEach(function (m) { m.rotation.y = Math.atan2(camera.position.x - m.position.x, camera.position.z - m.position.z); });
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  setMode('idle');
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

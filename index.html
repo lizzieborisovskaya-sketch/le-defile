@@ -302,7 +302,7 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
   canvas.addEventListener('pointermove', function (e) {
     if (!dragging) return;
     var k = (camera.fov * Math.PI / 180) / canvas.clientHeight;
-    var dy = (e.clientX - lx) * k, dp = (e.clientY - ly) * k;
+    var dy = -(e.clientX - lx) * k, dp = (e.clientY - ly) * k;
     if (mode === 'tour') { look.yaw += dy; look.pitch = Math.max(-0.8, Math.min(0.8, look.pitch + dp)); }
     else { yaw += dy; pitch = Math.max(-1.1, Math.min(1.1, pitch + dp)); }
     lx = e.clientX; ly = e.clientY;

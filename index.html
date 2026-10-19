@@ -86,6 +86,7 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
       <button class="primary" id="tour" type="button">Walk the runway</button>
       <button type="button" class="toggle" id="explore" aria-pressed="false">Explore freely</button>
       <button type="button" class="toggle" id="today" aria-pressed="false">Show today</button>
+      <button type="button" id="sound" aria-pressed="true" aria-label="Music on or off">Music on</button>
     </div>
     <div class="foot">
       <p class="note">Concept visualisation · façades and ground from photographs by Group G34 · models AI-generated</p>
@@ -284,6 +285,101 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
     return true;
   }
 
+  /* ---------- original runway soundtrack, synthesised in the browser ---------- */
+  var Music = (function () {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ctx = null, master, bus, rev, noise, timer = null, nextT = 0, step = 0, playing = false;
+    var BPM = 118, S16 = 60 / BPM / 4;
+    var chords = [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]];
+    var roots = [55, 43.65, 65.41, 49];
+    function impulse(sec) {
+      var len = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+      return b;
+    }
+    function init() {
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = 0;
+      var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3;
+      master.connect(comp); comp.connect(ctx.destination);
+      bus = ctx.createGain(); bus.connect(master);
+      rev = ctx.createConvolver(); rev.buffer = impulse(2.8);
+      var rg = ctx.createGain(); rg.gain.value = 0.32; rev.connect(rg); rg.connect(master);
+      noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      var nd = noise.getChannelData(0); for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      document.addEventListener('visibilitychange', function () { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (playing) ctx.resume(); });
+    }
+    function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+    function kick(t) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      env(g, t, 0.003, 0.85, 0.32); o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.4);
+    }
+    function noiseHit(t, type, f, q, peak, d, wet) {
+      var s = ctx.createBufferSource(); s.buffer = noise;
+      var fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+      var g = ctx.createGain(); env(g, t, 0.002, peak, d);
+      s.connect(fl); fl.connect(g); g.connect(bus); if (wet) g.connect(rev);
+      s.start(t); s.stop(t + d + 0.05);
+    }
+    function bass(t, f) {
+      var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+      var fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 6;
+      fl.frequency.setValueAtTime(520, t); fl.frequency.exponentialRampToValueAtTime(140, t + 0.22);
+      var g = ctx.createGain(); env(g, t, 0.006, 0.22, 0.24);
+      o.connect(fl); fl.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.3);
+    }
+    function pad(t, notes, dur) {
+      notes.forEach(function (f) {
+        [-6, 6].forEach(function (det) {
+          var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+          var fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 900;
+          var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.022, t + 1.2);
+          g.gain.setValueAtTime(0.022, t + dur - 0.4); g.gain.linearRampToValueAtTime(0.0001, t + dur + 1.4);
+          o.connect(fl); fl.connect(g); g.connect(bus); g.connect(rev); o.start(t); o.stop(t + dur + 1.5);
+        });
+      });
+    }
+    function bell(t, f) {
+      var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * 2;
+      var g = ctx.createGain(); env(g, t, 0.004, 0.07, 0.6);
+      o.connect(g); g.connect(rev); g.connect(bus); o.start(t); o.stop(t + 0.7);
+    }
+    function schedule(i, t) {
+      var bar = Math.floor(i / 16), s = i % 16, ch = bar % 4, sect = bar % 32;
+      if (s === 0) pad(t, chords[ch], 16 * S16);
+      var drums = sect >= 2 && sect < 30;
+      if (drums && s % 4 === 0) kick(t);
+      if (sect >= 1) { if (s % 4 === 2) noiseHit(t, 'highpass', 8000, 0.7, 0.07, 0.05); if (s % 2 === 1) noiseHit(t, 'highpass', 9500, 0.7, 0.025, 0.03); }
+      if (drums && sect >= 6 && (s === 4 || s === 12)) noiseHit(t, 'bandpass', 1700, 0.9, 0.16, 0.14, true);
+      if (sect >= 4 && sect < 30 && [0, 3, 6, 10, 14].indexOf(s) > -1) bass(t, roots[ch] * (s === 10 ? 2 : 1));
+      if (sect >= 8 && (s === 7 || s === 15) && Math.random() < 0.7) bell(t, chords[ch][Math.floor(Math.random() * 3)]);
+    }
+    function tick() { while (nextT < ctx.currentTime + 0.15) { schedule(step, nextT); nextT += S16; step++; } }
+    return {
+      start: function () {
+        if (!AC) return;
+        if (!ctx) init();
+        ctx.resume();
+        if (playing) return;
+        playing = true; step = 0; nextT = ctx.currentTime + 0.08;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0.75, ctx.currentTime + 2.5);
+        timer = setInterval(tick, 25); tick();
+      },
+      stop: function () {
+        if (!ctx || !playing) return;
+        playing = false;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
+        setTimeout(function () { if (!playing) clearInterval(timer); }, 1300);
+      }
+    };
+  })();
+  var soundOn = true;
+
   var tourBtn = $('tour'), exploreBtn = $('explore'), todayBtn = $('today'), hint = $('hint'), moves = $('moves');
   function setMode(m) {
     mode = m;
@@ -299,11 +395,19 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
     if (mode === 'tour') { setMode('paused'); return; }
     if (mode !== 'paused') { tourT = 0; look.yaw = 0; look.pitch = 0; }
     setMode('tour');
+    if (soundOn) Music.start();
   });
   exploreBtn.addEventListener('click', function () {
     if (mode === 'free') { setMode('idle'); return; }
     yaw += look.yaw; pitch += look.pitch; look.yaw = 0; look.pitch = 0;
     setMode('free');
+  });
+  var soundBtn = $('sound');
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    soundBtn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+    soundBtn.textContent = soundOn ? 'Music on' : 'Music off';
+    if (soundOn) Music.start(); else Music.stop();
   });
   todayBtn.addEventListener('click', function () {
     set.visible = !set.visible;

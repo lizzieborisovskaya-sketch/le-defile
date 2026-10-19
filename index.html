@@ -298,7 +298,7 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
   var Music = (function () {
     var AC = window.AudioContext || window.webkitAudioContext;
     var ctx = null, master, drums, synth, rev, dly, noise, drive, timer = null, nextT = 0, step = 0, playing = false, unlockEl = null;
-    var BPM = 104, S16 = 60 / BPM / 4;
+    var BPM = 100, S16 = 60 / BPM / 4;
     // D minor: Dm, Bb, Gm, A
     var chords = [[146.83, 174.61, 220], [116.54, 146.83, 174.61], [98, 116.54, 146.83], [110, 138.59, 164.81]];
     var roots = [36.71, 29.14, 49, 55];
@@ -366,7 +366,7 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
       o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(120, t + 0.1);
       env(g, t, 0.002, 0.35, 0.16); o.connect(g); g.connect(drums); g.connect(rev); o.start(t); o.stop(t + 0.2);
     }
-    function tick16(t, acc) { noiseHit(t, 'highpass', 10000, 0.8, acc ? 0.05 : 0.022, 0.025); }
+    function tick16(t, acc) { noiseHit(t, 'highpass', 9000, 0.8, acc ? 0.09 : 0.035, acc ? 0.05 : 0.025); }
     function bass(t, f, dur) {
       [['sawtooth', 0], ['sawtooth', 12], ['sine', -1200]].forEach(function (k) {
         var o = ctx.createOscillator(); o.type = k[0]; o.frequency.value = f * 2; o.detune.value = k[1];
@@ -420,16 +420,6 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
       var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + dur);
       s.connect(fl); fl.connect(g); g.connect(master); g.connect(rev); s.start(t); s.stop(t + dur + 0.02);
     }
-    var riffPat = [0, 0, 1, 0, 2, 0, 1, 2, 0, 0, 1, 0, 2, 1, 0, 2], riffOct = [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 1, 1];
-    function riff(t, f, cut, lvl) {
-      [['sawtooth', -6], ['square', 6]].forEach(function (k) {
-        var o = ctx.createOscillator(); o.type = k[0]; o.frequency.value = f; o.detune.value = k[1];
-        var fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 9;
-        fl.frequency.setValueAtTime(cut * 1.8, t); fl.frequency.exponentialRampToValueAtTime(cut, t + 0.09);
-        var g = ctx.createGain(); env(g, t, 0.002, lvl, 0.13);
-        o.connect(fl); fl.connect(g); g.connect(synth); g.connect(dly); o.start(t); o.stop(t + 0.17);
-      });
-    }
     var motif = [0, 2, 1, 2, 0, 1, 2, 1];
     function schedule(i, t) {
       var bar = Math.floor(i / 16), s = i % 16, ch = bar % 4, sec = bar % 32, notes = chords[ch];
@@ -446,13 +436,7 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
       if (drumsOn && (s === 0 || s === 6 || s === 10)) bass(t, roots[ch], s === 0 ? S16 * 5 : S16 * 3);
       if (peak && !gap && (s === 0 || s === 11)) stab(t, notes, 0.026);
       if (main && !gap && s === 0 && bar % 2 === 0) stab(t, notes, 0.02);
-      if ((peak || brk) && s === 15 && bar % 2 === 0 && !gap) bell(t, notes[motif[bar % 8]]);
-      if (drumsOn && s % 4 === 2) noiseHit(t, 'highpass', 6500, 0.7, peak ? 0.1 : 0.07, 0.16);
-      var riffOn = (sec >= 2 && !brk) || (brk && sec < 30);
-      if (riffOn && !gap) {
-        var ph = ((sec - 2) % 14) / 13, cut = intro ? 380 : (peak ? 900 + 2400 * ph : 450 + 1500 * ph);
-        riff(t, notes[riffPat[s]] * 2 * riffOct[s], cut, peak ? 0.05 : 0.04);
-      }
+      if ((peak || brk) && s % 4 === 3 && !gap) bell(t, notes[motif[(bar * 4 + (s >> 2)) % 8]]);
     }
     function tick() { while (nextT < ctx.currentTime + 0.15) { schedule(step, nextT); nextT += S16; step++; } }
     return {

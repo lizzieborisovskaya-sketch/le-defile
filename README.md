@@ -4,4 +4,4 @@ Walkable concept of a fashion runway in the Cour du Cheval Blanc, Château de Fo
 
 Live page: https://lizzieborisovskaya-sketch.github.io/le-defile/
 
-Sky: "Spruit Sunrise" by Poly Haven (CC0), via the three.js examples.
+Sky: golden-hour base "Spruit Sunrise" by Poly Haven (CC0, via the three.js examples) with generated clouds.

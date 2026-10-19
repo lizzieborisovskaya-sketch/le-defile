@@ -58,12 +58,6 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
 .moves svg { width: 22px; height: 22px; }
 .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .note { margin: 0; font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cream-dim); }
-.sound { position: fixed; z-index: 6; top: calc(150px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: 48px; min-height: 48px; height: 48px; padding: 0; display: grid; place-items: center; border-radius: 50%; }
-.sound svg { width: 22px; height: 22px; }
-.sound .ic-on { display: none; }
-.sound[aria-pressed="true"] .ic-on { display: block; }
-.sound[aria-pressed="true"] .ic-off { display: none; }
-.sound[aria-pressed="true"] { background: var(--cream); color: var(--ink); }
 .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--ink); font-family: var(--display); font-style: italic; font-size: 1.4rem; transition: opacity 0.8s ease; pointer-events: none; }
 .fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-family: var(--display); font-size: 1.3rem; background: var(--ink); }
 @media (max-width: 560px) {
@@ -72,16 +66,12 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
 }
 </style>
 
-<button type="button" id="sound" class="sound" aria-pressed="false" aria-label="Play music">
-  <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
-  <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
-</button>
 <canvas id="scene" aria-label="Walkable 3D concept of a fashion runway in the Cour des Adieux, Château de Fontainebleau, built from photographs"></canvas>
 <div class="shade" aria-hidden="true"></div>
 
 <div class="ui">
   <header class="brand">
-    <p class="eyebrow">Château de Fontainebleau · Cour des Adieux</p>
+    <p class="eyebrow">Château de Fontainebleau</p>
     <h1>Le Défilé</h1>
     <p class="tag">Walk the runway before your guests do.</p>
   </header>
@@ -294,155 +284,6 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
     return true;
   }
 
-  /* ---------- original runway soundtrack (glam pop-dance), synthesised in the browser ---------- */
-  var Music = (function () {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    var ctx = null, master, drums, synth, rev, dly, noise, timer = null, nextT = 0, step = 0, playing = false, unlockEl = null;
-    var BPM = 124, S16 = 60 / BPM / 4;
-    var chords = [[174.61, 220, 261.63, 329.63], [196, 246.94, 293.66, 392], [164.81, 196, 246.94, 293.66], [220, 261.63, 329.63, 440]];
-    var roots = [87.31, 98, 82.41, 110];
-    function unlockIOS() {
-      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
-      try {
-        if (!unlockEl) {
-          var sr = 8000, n = sr / 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
-          function w(o, str) { for (var i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); }
-          w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
-          v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
-          v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
-          unlockEl = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
-          unlockEl.loop = true; unlockEl.setAttribute('playsinline', '');
-        }
-        var pr = unlockEl.play(); if (pr && pr.catch) pr.catch(function () {});
-      } catch (e) {}
-    }
-    function impulse(sec) {
-      var len = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, len, ctx.sampleRate);
-      for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
-      return b;
-    }
-    function init() {
-      ctx = new AC();
-      master = ctx.createGain(); master.gain.value = 0;
-      var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.12;
-      master.connect(comp); comp.connect(ctx.destination);
-      drums = ctx.createGain(); drums.connect(master);
-      synth = ctx.createGain(); synth.connect(master);
-      rev = ctx.createConvolver(); rev.buffer = impulse(2.4);
-      var rg = ctx.createGain(); rg.gain.value = 0.28; rev.connect(rg); rg.connect(master);
-      dly = ctx.createDelay(1); dly.delayTime.value = S16 * 3;
-      var fb = ctx.createGain(); fb.gain.value = 0.38; var dg = ctx.createGain(); dg.gain.value = 0.35;
-      var dl = ctx.createBiquadFilter(); dl.type = 'lowpass'; dl.frequency.value = 4500;
-      dly.connect(dl); dl.connect(fb); fb.connect(dly); dl.connect(dg); dg.connect(master);
-      noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-      var nd = noise.getChannelData(0); for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-      document.addEventListener('visibilitychange', function () { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (playing) ctx.resume(); });
-    }
-    function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
-    function duck(t) { synth.gain.setValueAtTime(0.35, t); synth.gain.linearRampToValueAtTime(1, t + 0.19); }
-    function noiseHit(t, type, f, q, peak, d, wet, out) {
-      var s = ctx.createBufferSource(); s.buffer = noise;
-      var fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
-      var g = ctx.createGain(); env(g, t, 0.001, peak, d);
-      s.connect(fl); fl.connect(g); g.connect(out || drums); if (wet) g.connect(rev);
-      s.start(t, Math.random() * 0.5); s.stop(t + d + 0.05);
-    }
-    function kick(t) {
-      var o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(46, t + 0.11);
-      env(g, t, 0.002, 1.0, 0.3); o.connect(g); g.connect(drums); o.start(t); o.stop(t + 0.36);
-      noiseHit(t, 'highpass', 3000, 0.7, 0.12, 0.012, false, drums);
-      duck(t);
-    }
-    function clap(t) { [0, 0.011, 0.023].forEach(function (o, i) { noiseHit(t + o, 'bandpass', 1250, 1.1, i === 2 ? 0.42 : 0.3, i === 2 ? 0.16 : 0.02, i === 2); }); }
-    function bass(t, f) {
-      [['sawtooth', 0], ['square', -7]].forEach(function (k) {
-        var o = ctx.createOscillator(); o.type = k[0]; o.frequency.value = f; o.detune.value = k[1];
-        var fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 4;
-        fl.frequency.setValueAtTime(1100, t); fl.frequency.exponentialRampToValueAtTime(260, t + 0.16);
-        var g = ctx.createGain(); env(g, t, 0.004, 0.13, 0.17);
-        o.connect(fl); fl.connect(g); g.connect(synth); o.start(t); o.stop(t + 0.22);
-      });
-    }
-    function stab(t, notes) {
-      notes.forEach(function (f) {
-        [-9, 9].forEach(function (det) {
-          var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f * 2; o.detune.value = det;
-          var fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 2;
-          fl.frequency.setValueAtTime(5200, t); fl.frequency.exponentialRampToValueAtTime(700, t + 0.18);
-          var g = ctx.createGain(); env(g, t, 0.003, 0.03, 0.2);
-          o.connect(fl); fl.connect(g); g.connect(synth); g.connect(rev); o.start(t); o.stop(t + 0.26);
-        });
-      });
-    }
-    function pad(t, notes, dur, lvl) {
-      notes.forEach(function (f) {
-        var o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
-        var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(lvl, t + 0.4);
-        g.gain.setValueAtTime(lvl, t + dur - 0.2); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.8);
-        o.connect(g); g.connect(synth); g.connect(rev); o.start(t); o.stop(t + dur + 0.9);
-      });
-    }
-    function arp(t, f, lvl) {
-      var o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f * 4;
-      var o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 8;
-      var g = ctx.createGain(); env(g, t, 0.002, lvl, 0.14);
-      var g2 = ctx.createGain(); g2.gain.value = 0.25;
-      o.connect(g); o2.connect(g2); g2.connect(g); g.connect(synth); g.connect(dly);
-      o.start(t); o2.start(t); o.stop(t + 0.2); o2.stop(t + 0.2);
-    }
-    function riser(t, dur) {
-      var s = ctx.createBufferSource(); s.buffer = noise; s.loop = true;
-      var fl = ctx.createBiquadFilter(); fl.type = 'bandpass'; fl.Q.value = 1.5;
-      fl.frequency.setValueAtTime(400, t); fl.frequency.exponentialRampToValueAtTime(9000, t + dur);
-      var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + dur);
-      s.connect(fl); fl.connect(g); g.connect(master); g.connect(rev); s.start(t); s.stop(t + dur + 0.02);
-    }
-    function schedule(i, t) {
-      var bar = Math.floor(i / 16), s = i % 16, ch = bar % 4, sec = bar % 32, notes = chords[ch];
-      var intro = sec < 4, build = sec >= 4 && sec < 16, drop = sec >= 16 && sec < 28, brk = sec >= 28;
-      var gap = (sec === 15 || sec === 31) && s > 8;
-      if (s === 0) pad(t, notes, 16 * S16, intro || brk ? 0.045 : 0.022);
-      if (s === 0 && (sec === 15 || sec === 31)) riser(t, 16 * S16);
-      var full = build || drop;
-      if (full && s % 4 === 0 && !gap) kick(t);
-      if (full && (s === 4 || s === 12) && !gap) clap(t);
-      if (s % 4 === 2) noiseHit(t, 'highpass', drop ? 6500 : 8000, 0.7, drop ? 0.16 : 0.1, drop ? 0.16 : 0.05);
-      if ((full || intro) && s % 2 === 1) noiseHit(t, 'highpass', 10000, 0.7, 0.04, 0.03);
-      if (full && !gap && [2, 6, 10, 14].indexOf(s) > -1) bass(t, roots[ch]);
-      if (full && !gap && (s === 7 || s === 15)) bass(t, roots[ch] * 2);
-      if (full && !gap && [0, 3, 6, 10, 13].indexOf(s) > -1) stab(t, notes);
-      var pat = [0, 1, 2, 3, 2, 1, 3, 2];
-      if (!gap) arp(t, notes[pat[s % 8]] * (s >= 8 && drop ? 2 : 1), drop ? 0.07 : 0.05);
-    }
-    function tick() { while (nextT < ctx.currentTime + 0.15) { schedule(step, nextT); nextT += S16; step++; } }
-    return {
-      start: function () {
-        if (!AC) return;
-        unlockIOS();
-        if (!ctx) init();
-        ctx.resume();
-        if (playing) return;
-        playing = true; step = 0; nextT = ctx.currentTime + 0.08;
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-        master.gain.linearRampToValueAtTime(0.9, ctx.currentTime + 0.6);
-        timer = setInterval(tick, 25); tick();
-      },
-      isPlaying: function () { return playing; },
-      stop: function () {
-        if (!ctx || !playing) return;
-        playing = false;
-        if (unlockEl) unlockEl.pause();
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-        master.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
-        setTimeout(function () { if (!playing) clearInterval(timer); }, 1300);
-      }
-    };
-  })();
-  var soundOn = true;
-
   var tourBtn = $('tour'), exploreBtn = $('explore'), todayBtn = $('today'), hint = $('hint'), moves = $('moves');
   function setMode(m) {
     mode = m;
@@ -458,22 +299,11 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
     if (mode === 'tour') { setMode('paused'); return; }
     if (mode !== 'paused') { tourT = 0; look.yaw = 0; look.pitch = 0; }
     setMode('tour');
-    if (soundOn) { Music.start(); syncSound(); }
   });
   exploreBtn.addEventListener('click', function () {
     if (mode === 'free') { setMode('idle'); return; }
     yaw += look.yaw; pitch += look.pitch; look.yaw = 0; look.pitch = 0;
     setMode('free');
-  });
-  var soundBtn = $('sound');
-  function syncSound() {
-    var on = Music.isPlaying();
-    soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    soundBtn.setAttribute('aria-label', on ? 'Turn music off' : 'Turn music on');
-  }
-  soundBtn.addEventListener('click', function () {
-    if (Music.isPlaying()) { Music.stop(); soundOn = false; } else { Music.start(); soundOn = true; }
-    syncSound();
   });
   todayBtn.addEventListener('click', function () {
     set.visible = !set.visible;

@@ -170,7 +170,7 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
     }));
     m.position.set(x, h / 2 - 0.25, z); m.rotation.y = rotY; scene.add(m);
   }
-  facade('facade-back', 112, 112 * 462 / 1620, 0, -128, 0);
+  facade('facade-back', 130, 130 * 462 / 1620, -17.5, -128, 0);  // staircase (63.5% across the photo) on the runway axis
   facade('facade-left', 144, 144 * 680 / 3580, -47, -56, Math.PI / 2);
   facade('facade-right', 144, 144 * 700 / 3530, 47, -56, -Math.PI / 2);
 
@@ -261,11 +261,11 @@ button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
   });
 
   /* ---------- moving around ---------- */
-  var pos = new THREE.Vector3(-1.85, 1.65, 10), yaw = 0, pitch = -0.02, look = { yaw: 0, pitch: 0 };
+  var pos = new THREE.Vector3(0, 1.65, 12), yaw = 0, pitch = -0.02, look = { yaw: 0, pitch: 0 };
   var mode = 'idle', tourT = 0;
   var AISLE = -(RW / 2 + 0.35);
   var tour = [
-    { t: 0, p: [AISLE, 1.65, 10], yaw: 0, pitch: -0.02 },
+    { t: 0, p: [0, 1.65, 12], yaw: 0, pitch: -0.02 },
     { t: 4, p: [AISLE, 1.65, 2], yaw: 0.12, pitch: -0.04 },
     { t: 40, p: [AISLE, 1.65, -104], yaw: 0.05, pitch: 0.0 },
     { t: 46, p: [-0.6, 2.07, -112], yaw: 0.0, pitch: 0.2 }
